@@ -60,18 +60,19 @@ class DatabaseManager:
 
 # --- Exercise Card Component ---
 class ExerciseCard(ft.Container):
-    def __init__(self, exercise_id, name, db, onDelete):
+    def __init__(self, exercise_id, name, db, onDelete, show_snackbar_fn):
         super().__init__()
         self.exercise_id = exercise_id
         self.exercise_name = name
         self.db = db
         self.onDelete = onDelete
+        self.show_snackbar = show_snackbar_fn
         
         # Container styling
         self.padding = 15
         self.border_radius = 15
-        self.bgcolor = ft.Colors.SURFACE_VARIANT
-        self.animate = ft.animation.Animation(300, ft.AnimationCurve.EASE_OUT)
+        self.bgcolor = ft.Colors.SURFACE_CONTAINER_HIGHEST
+        self.animate = ft.Animation(300, ft.AnimationCurve.EASE_OUT)
 
         # Styled Input fields
         self.txt_weight = ft.TextField(
@@ -200,27 +201,20 @@ class ExerciseCard(ft.Container):
             self.db.log_set(self.exercise_id, w, r, s)
             
             self.load_history()
-            self.page.show_snack_bar(ft.SnackBar(content=ft.Text(f"Logged: {w}kg x {r}"), duration=1000))
+            self.show_snackbar(f"Logged: {w}kg x {r}")
         except ValueError:
-            self.page.show_snack_bar(ft.SnackBar(content=ft.Text("Invalid numbers"), bgcolor=ft.Colors.ERROR))
+            self.show_snackbar("Invalid numbers", is_error=True)
 
     def delete_exercise(self, e):
-        def confirm_delete(e):
-             self.onDelete(self.exercise_id)
-             self.page.close_dialog()
-
-        dlg = ft.AlertDialog(
-            title=ft.Text("Confirm Delete"),
-            content=ft.Text(f"Delete '{self.exercise_name}'?"),
-            actions=[
-                ft.TextButton("Cancel", on_click=lambda e: self.page.close_dialog()),
-                ft.TextButton("Delete", on_click=confirm_delete, style=ft.ButtonStyle(color=ft.Colors.ERROR)),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-        self.page.dialog = dlg
-        dlg.open = True
-        self.page.update()
+        print(f"Delete clicked for ID: {self.exercise_id}") # Console log
+        try:
+            self.onDelete(self.exercise_id)
+        except Exception as ex:
+            print(f"Error in delete_exercise: {ex}")
+            try:
+                self.show_snackbar(f"Error: {ex}", is_error=True)
+            except:
+                pass
 
 
 # --- Main Application ---
@@ -237,14 +231,58 @@ def main(page: ft.Page):
 
     db = DatabaseManager()
 
-    # Main content area
+    # --- Utilities ---
+    def show_snackbar(msg, is_error=False):
+        page.show_snack_bar(ft.SnackBar(
+            content=ft.Text(str(msg)),
+            bgcolor=ft.Colors.ERROR if is_error else ft.Colors.BLUE_600
+        ))
+
+    # --- Custom Dialog Overlay ---
+    def show_custom_dialog(title, content_control, on_confirm, confirm_text="Save"):
+        overlay = None # forward declaration
+
+        def close(e=None):
+            page.overlay.remove(overlay)
+            page.update()
+        
+        def on_ok(e):
+            on_confirm(e)
+            close()
+
+        card = ft.Container(
+            content=ft.Column([
+                ft.Text(title, size=20, weight="bold"),
+                ft.Divider(),
+                content_control,
+                ft.Container(height=20),
+                ft.Row([
+                    ft.TextButton("Cancel", on_click=close),
+                    ft.ElevatedButton(confirm_text, on_click=on_ok)
+                ], alignment=ft.MainAxisAlignment.END)
+            ], tight=True, width=300),
+            padding=20,
+            bgcolor=ft.Colors.SURFACE,
+            border_radius=10,
+            on_click=lambda e: None # prevent click through
+        )
+
+        overlay = ft.Container(
+            content=card,
+            alignment=ft.Alignment(0, 0),
+            bgcolor="#B3000000", # 0.7 opacity black
+            on_click=close, # Click outside to close
+            padding=20,
+        )
+        
+        page.overlay.append(overlay)
+        page.update()
+
+    # --- App Logic ---
     content_area = ft.Column(scroll=ft.ScrollMode.ADAPTIVE, expand=True, spacing=15)
     
-    # FAB (Floating Action Button) - will be updated based on tab
-    fab = ft.FloatingActionButton(
-        icon=ft.Icons.ADD,
-        bgcolor=ft.Colors.BLUE_400,
-    )
+    routines = ["Push", "Pull", "Legs"]
+    routine_colors = [ft.Colors.BLUE_400, ft.Colors.RED_400, ft.Colors.GREEN_400]
 
     def refresh_exercises(routine):
         content_area.controls.clear()
@@ -265,42 +303,50 @@ def main(page: ft.Page):
         else:
             for eid, name, _ in exercises:
                 content_area.controls.append(
-                    ExerciseCard(eid, name, db, lambda eid: delete_handler(eid, routine))
+                    ExerciseCard(eid, name, db, lambda eid: confirm_delete_handler(eid), show_snackbar)
                 )
         content_area.update()
 
-    def delete_handler(eid, routine):
-        db.remove_exercise(eid)
-        refresh_exercises(routine)
+    def confirm_delete_handler(eid):
+        print(f"DEBUG: confirm_delete_handler called for {eid}")
+        def do_delete(e):
+            print(f"DEBUG: do_delete execution for {eid}")
+            db.remove_exercise(eid)
+            refresh_exercises(routines[page.navigation_bar.selected_index])
+            print("DEBUG: Exercise removed and view refreshed")
+            
+        show_custom_dialog(
+            "Confirm Delete",
+            ft.Text("Are you sure you want to delete this exercise?"),
+            do_delete,
+            "Delete"
+        )
+        print("DEBUG: Delete dialog shown")
 
     def add_exercise_dialog(e):
         routine = routines[page.navigation_bar.selected_index]
-        txt_name = ft.TextField(label="Exercise Name", autofocus=True)
+        txt_name = ft.TextField(label="Exercise Name") # No autofocus to be safe
         
-        def save(e):
+        def do_save(e):
             if txt_name.value:
                 db.add_exercise(txt_name.value, routine)
                 refresh_exercises(routine)
-                dlg.open = False
-                page.update()
+            else:
+                show_snackbar("Name required", True)
 
-        dlg = ft.AlertDialog(
-            title=ft.Text(f"Add {routine} Exercise"),
-            content=txt_name,
-            actions=[
-                ft.TextButton("Cancel", on_click=lambda e: page.close_dialog()),
-                ft.ElevatedButton("Add", on_click=save)
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
+        show_custom_dialog(
+            f"Add {routine} Exercise",
+            txt_name,
+            do_save,
+            "Add"
         )
-        page.dialog = dlg
-        dlg.open = True
-        page.update()
 
-    fab.on_click = add_exercise_dialog
-
-    routines = ["Push", "Pull", "Legs"]
-    routine_colors = [ft.Colors.BLUE_400, ft.Colors.RED_400, ft.Colors.GREEN_400]
+    # FAB
+    fab = ft.FloatingActionButton(
+        icon=ft.Icons.ADD,
+        bgcolor=ft.Colors.BLUE_400,
+        on_click=add_exercise_dialog
+    )
 
     def on_nav_change(e):
         idx = e.control.selected_index
@@ -322,14 +368,13 @@ def main(page: ft.Page):
     page.add(
         ft.Container(
             content=ft.Stack([
-                ft.Container(content_area, padding=ft.padding.only(left=15, right=15, top=15, bottom=80)),
+                ft.Container(content_area, padding=ft.Padding(15, 15, 15, 80)),
                 ft.Container(fab, alignment=ft.Alignment(1, 1), padding=20)
             ]),
             expand=True
         )
     )
 
-    # Initial load (must be after adding to page)
     refresh_exercises("Push")
 
 ft.app(target=main)

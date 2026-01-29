@@ -1,0 +1,22 @@
+C:\Users\jfmar\anaconda3\envs\list_apps\gym_tracker_flet\main.py:368: DeprecationWarning: app() is deprecated since version 0.80.0. Use run() instead.
+  ft.app(target=main)
+C:\Users\jfmar\anaconda3\envs\list_apps\gym_tracker_flet\main.py:359: DeprecationWarning: only() is deprecated since version 0.80.0 and will be removed in version 0.83.0. Use Padding.only() instead
+  ft.Container(content_area, padding=ft.padding.only(left=15, right=15, top=15, bottom=80)),
+Unhandled error in main() handler
+Traceback (most recent call last):
+  File "C:\Users\jfmar\AppData\Roaming\Python\Python313\site-packages\flet\app.py", line 271, in on_session_created
+    main(session.page)
+    ~~~~^^^^^^^^^^^^^^
+  File "C:\Users\jfmar\anaconda3\envs\list_apps\gym_tracker_flet\main.py", line 366, in main
+    refresh_exercises("Push")
+    ~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "C:\Users\jfmar\anaconda3\envs\list_apps\gym_tracker_flet\main.py", line 298, in refresh_exercises
+    ExerciseCard(eid, name, db, lambda eid: confirm_delete_handler(eid), show_snackbar)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jfmar\anaconda3\envs\list_apps\gym_tracker_flet\main.py", line 74, in __init__
+    self.bgcolor = ft.Colors.SURFACE_VARIANT
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jfmar\AppData\Roaming\Python\Python313\site-packages\flet\utils\deprecated_enum.py", line 34, in __getattr__
+    return super().__getattr__(name)
+           ^^^^^^^^^^^^^^^^^^^
+AttributeError: 'super' object has no attribute '__getattr__'. Did you mean: '__setattr__'?
