@@ -132,7 +132,7 @@ class ExerciseCard(ft.Container):
                 spacing=10
             ),
             visible=False,
-            padding=ft.padding.only(top=10)
+            padding=ft.Padding(0, 10, 0, 0)
         )
 
         # Set content of the Container
@@ -156,37 +156,49 @@ class ExerciseCard(ft.Container):
         ])
 
     def toggle_details(self, e):
-        self.details_container.visible = not self.details_container.visible
-        e.control.icon = ft.Icons.EXPAND_LESS if self.details_container.visible else ft.Icons.EXPAND_MORE
-        if self.details_container.visible:
-            self.load_history()
-        self.update()
+        print(f"Toggle details clicked for {self.exercise_name}")
+        try:
+            self.details_container.visible = not self.details_container.visible
+            e.control.icon = ft.Icons.EXPAND_LESS if self.details_container.visible else ft.Icons.EXPAND_MORE
+            e.control.update() # Update the button icon properly
+            
+            if self.details_container.visible:
+                self.load_history()
+            
+            self.update() # Update the card container to show/hide details
+            if self.page:
+                self.page.update() # Force page layout update
+        except Exception as ex:
+             print(f"Error toggling details: {ex}")
 
     def load_history(self):
-        history = self.db.get_history(self.exercise_id)
-        self.history_list.controls.clear()
-        if not history:
-             self.history_list.controls.append(ft.Text("No logs yet.", color=ft.Colors.GREY_500, size=12))
-        else:
-            for w, r, s, t in history:
-                try:
-                    dt = datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
-                    date_str = dt.strftime('%b %d')
-                except:
-                    date_str = t 
-                
-                self.history_list.controls.append(
-                    ft.Container(
-                        content=ft.Row([
-                            ft.Text(f"{date_str}", size=12, color=ft.Colors.GREY_400, width=60),
-                            ft.Text(f"{w}kg", size=13, weight="bold"),
-                            ft.Text(f"x {r}", size=13),
-                            ft.Text(f"({s} sets)", size=12, color=ft.Colors.GREY_400)
-                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                        padding=5,
-                        border=ft.border.only(bottom=ft.border.BorderSide(1, ft.Colors.GREY_800))
+        try:
+            history = self.db.get_history(self.exercise_id)
+            self.history_list.controls.clear()
+            if not history:
+                 self.history_list.controls.append(ft.Text("No logs yet.", color=ft.Colors.GREY_500, size=12))
+            else:
+                for w, r, s, t in history:
+                    try:
+                        dt = datetime.strptime(t, '%Y-%m-%d %H:%M:%S')
+                        date_str = dt.strftime('%b %d')
+                    except:
+                        date_str = t 
+                    
+                    self.history_list.controls.append(
+                        ft.Container(
+                            content=ft.Row([
+                                ft.Text(f"{date_str}", size=12, color=ft.Colors.GREY_400, width=60),
+                                ft.Text(f"{w}lbs", size=13, weight="bold"),
+                                ft.Text(f"x {r}", size=13),
+                                ft.Text(f"({s} sets)", size=12, color=ft.Colors.GREY_400)
+                            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                            padding=5,
+                            border=ft.border.only(bottom=ft.border.BorderSide(1, ft.Colors.GREY_800))
+                        )
                     )
-                )
+        except Exception as ex:
+             print(f"Error loading history: {ex}")
         self.update()
 
     def save_set(self, e):
@@ -201,7 +213,7 @@ class ExerciseCard(ft.Container):
             self.db.log_set(self.exercise_id, w, r, s)
             
             self.load_history()
-            self.show_snackbar(f"Logged: {w}kg x {r}")
+            self.show_snackbar(f"Logged: {w}lbs x {r}")
         except ValueError:
             self.show_snackbar("Invalid numbers", is_error=True)
 
@@ -232,11 +244,17 @@ def main(page: ft.Page):
     db = DatabaseManager()
 
     # --- Utilities ---
+    # --- Utilities ---
     def show_snackbar(msg, is_error=False):
-        page.show_snack_bar(ft.SnackBar(
-            content=ft.Text(str(msg)),
-            bgcolor=ft.Colors.ERROR if is_error else ft.Colors.BLUE_600
-        ))
+        try:
+            snack = ft.SnackBar(
+                content=ft.Text(str(msg)),
+                bgcolor=ft.Colors.ERROR if is_error else ft.Colors.BLUE_600,
+                duration=2000
+            )
+            page.open(snack)
+        except Exception as ex:
+            print(f"Error showing snackbar: {ex}")
 
     # --- Custom Dialog Overlay ---
     def show_custom_dialog(title, content_control, on_confirm, confirm_text="Save"):
@@ -342,6 +360,7 @@ def main(page: ft.Page):
         )
 
     # FAB
+    # FAB
     fab = ft.FloatingActionButton(
         icon=ft.Icons.ADD,
         bgcolor=ft.Colors.BLUE_400,
@@ -365,12 +384,12 @@ def main(page: ft.Page):
         ]
     )
 
+    page.floating_action_button = fab
+
     page.add(
         ft.Container(
-            content=ft.Stack([
-                ft.Container(content_area, padding=ft.Padding(15, 15, 15, 80)),
-                ft.Container(fab, alignment=ft.Alignment(1, 1), padding=20)
-            ]),
+            content=content_area, 
+            padding=ft.Padding(15, 15, 15, 80),
             expand=True
         )
     )
