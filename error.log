@@ -1,0 +1,14 @@
+C:\Users\jfmar\anaconda3\envs\list_apps\gym_tracker_flet\main.py:344: DeprecationWarning: app() is deprecated since version 0.70.0. Use run() instead.
+  ft.app(target=main)
+Unhandled error in main() handler
+Traceback (most recent call last):
+  File "C:\Users\jfmar\AppData\Roaming\Python\Python313\site-packages\flet\app.py", line 271, in on_session_created
+    main(session.page)
+    ~~~~^^^^^^^^^^^^^^
+  File "C:\Users\jfmar\anaconda3\envs\list_apps\gym_tracker_flet\main.py", line 295, in main
+    tabs = ft.Tabs(
+        selected_index=0,
+        animation_duration=300,
+        expand=True,
+    )
+TypeError: Tabs.__init__() missing 2 required positional arguments: 'content' and 'length'
